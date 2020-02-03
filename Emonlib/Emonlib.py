@@ -155,8 +155,24 @@ class Emonlib(object):
         self._sumCurrent = 0
         self._sumPower = 0
 
-    async def calc_irms(self, _number_samples: int):
+    async def calc_current_rms(self, _number_samples: int):
+        """
+        Calculate current rms
+        :param _number_samples:
+        :return:
+        """
         adc_current = machine.ADC(self._inPinI)
 
         for sample in range(0, _number_samples):
-            pass
+            sample_current = adc_current.read()
+            self._offsetCurrent += ((sample_current - self._offsetCurrent) / 1024)
+            self._filteredCurrent = sample_current - self._offsetCurrent
+
+            self._sqrtCurrent = pow(self._filteredCurrent, 2)
+            self._sumCurrent += self._sqrtCurrent
+
+        current_ratio = self._currentCalibration * ((SUPPLY_VOLTAGE / 1000) / ADC_COUNTS)
+        self.currentRms = current_ratio * sqrt(self._sumCurrent / _number_samples)
+        self._sumCurrent = 0
+
+        return self.currentRms
